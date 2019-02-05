@@ -128,7 +128,49 @@ class KnowledgeBase(object):
         printv("Retracting {!r}", 0, verbose, [fact])
         ####################################################
         # Student code goes here
-        
+        if isinstance(fact, Fact) and fact in self.facts:   
+                    f = self.facts[self.facts.index(fact)]   
+                    if not f.supported_by and self.facts[self.facts.index(fact)].asserted:  
+                        for i in f.supports_rules:      
+                            for k in i.supported_by:  
+                                if f in k: 
+                                    i.supported_by.remove(k)  
+                            self.helper(i)  
+                        for i in f.supports_facts: 
+                            for k in i.supported_by: 
+                                if f in k:  
+                                    i.supported_by.remove(k) 
+                            self.helper(i) 
+                        self.facts.remove(self.facts[self.facts.index(fact)]) 
+    def helper(self, f): 
+        if not f: 
+            return                           
+        elif isinstance(f, Rule):   
+            if (not f.asserted) and (not f.supported_by):   
+                for i in f.supports_facts:  
+                    for k in i.supported_by:  
+                        if f in k:   
+                            i.supported_by.remove(k) 
+                    self.helper(i) 
+                for i in f.supports_rules: 
+                    for k in i.supported_by: 
+                        if f in k: 
+                            i.supported_by.remove(k) 
+                    self.helper(i) 
+                self.rules.remove(f) 
+        elif isinstance(f, Fact):   
+            if (not f.asserted) and (not f.supported_by): 
+                for i in f.supports_facts:   
+                    for k in i.supported_by: 
+                        if f in k:  
+                            i.supported_by.remove(k)                                          
+                    self.helper(i)   
+                for i in f.supports_rules:  
+                    for k in i.supported_by:  
+                        if f in k:  
+                            i.supported_by.remove(k)   
+                    self.helper(i)  
+                self.facts.remove(f)  
 
 class InferenceEngine(object):
     def fc_infer(self, fact, rule, kb):
@@ -146,3 +188,18 @@ class InferenceEngine(object):
             [fact.statement, rule.lhs, rule.rhs])
         ####################################################
         # Student code goes here
+        if match(fact.statement, rule.lhs[0]):
+            if len(rule.lhs)!=1:
+                new_lhs = []
+                for ls in rule.lhs[1:]:
+                    new_lhs.append(instantiate(ls, match(fact.statement, rule.lhs[0])))
+                new_rhs = instantiate(rule.rhs, match(fact.statement, rule.lhs[0]))
+                newRule = Rule([new_lhs, new_rhs], [(fact,rule)])
+                fact.supports_rules.append(newRule)
+                rule.supports_rules.append(newRule)
+                kb.kb_add(newRule)
+            else:
+                newFact = Fact(instantiate(rule.rhs, match(fact.statement, rule.lhs[0])), [(fact,rule)])
+                fact.supports_facts.append(newFact)
+                rule.supports_facts.append(newFact)
+                kb.kb_add(newFact)
